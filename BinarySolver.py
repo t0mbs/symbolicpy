@@ -55,9 +55,9 @@ class BinarySolver:
 
         # Create temporary variables to represent properties
         if isinstance(l, Property):
-            l_node = self.state.createSymbolicVariable(l).name
+            l_node = self.state.createTemporarySymbolicVariable(l).name
         if isinstance(r, Property):
-            r_node = self.state.createSymbolicVariable(r).name
+            r_node = self.state.createTemporarySymbolicVariable(r).name
 
         # When both are constants, simplify to one constant
         if isinstance(l, ast.Constant) and isinstance(r, ast.Constant):

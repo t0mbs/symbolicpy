@@ -5,9 +5,10 @@ from SymbolicVariable import *
 # TODO: Split into Binary and Conditional subtypes
 class Property:
     # l and r Can be symbolic variable, or constant value
-    def __init__(self, l, op, r):
+    def __init__(self, l, op, r, is_true = True):
         self.l = l
         self.r = r
+        self.is_true = is_true
 
         self.r_isvar = type(r) == SymbolicVariable
         self.l_isvar = type(l) == SymbolicVariable
@@ -85,5 +86,14 @@ class Property:
     def getUnwoundExpression(self):
         return "%s %s %s" % (self.getExprName(self.l), self.op, self.getExprName(self.r))
 
+    def z3String(self):
+        expr = self.getRecursiveExpression()
+        if self.is_true:
+            return expr
+        return "Not(%s)" % expr
+
     def __str__(self):
-        return self.getRecursiveExpression()
+        expr = self.getRecursiveExpression()
+        if self.is_true:
+            return expr
+        return "not %s" % expr

@@ -1,7 +1,5 @@
-import z3
+from z3 import *
 import logging
-
-logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
 class Z3Solver:
     """Z3 handler class"""
@@ -24,24 +22,26 @@ class Z3Solver:
         self.simplify(properties)
         s = z3.Solver()
         for p in properties:
+
             # Instantiate Z3 variables locally
             for v in p.getSymbolicVariables():
                 locals()[v.name] = z3.Int(v.name)
 
             expressions = p.getExpressions()
             for expression in expressions:
-                s.add(eval(expression))
+                if p.is_true:
+                    s.add(eval(expression))
+                else:
+                    s.add(z3.Not(eval(expression)))
 
-        logging.debug("Z3 solving is evaluating: %s" % s)
+        logging.debug("Z3 is evaluating %s" % s)
 
         sat = s.check().r
 
         # TODO: implement
         if (sat == z3.Z3_L_TRUE):
             m = s.model()
-            print(m)
-        
-        logging.debug("Z3 solution value: %i " % sat)
+
         return (sat == z3.Z3_L_TRUE)
 
 
@@ -64,7 +64,7 @@ class Z3Solver:
             # Instantiate Z3 variables locally
             for v in p.getSymbolicVariables():
                 locals()[v.name] = z3.Int(v.name)
-            expressions.append(str(p))
+            expressions.append(p.z3String())
 
 
         expression = "z3.And(%s)" % ", ".join(expressions)
