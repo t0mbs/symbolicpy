@@ -154,8 +154,9 @@ class Tree:
         """
         solver = BinarySolver(state)
         # The l-node will never be a Constant, therefore neither will the return
+        
         p = solver.solve(node.target, node.op, node.value)
-        state.createSymbolicVariable(p, node.target.id)
+        state.createSymbolicVariable(node.target.id, p)
 
     def conditional(self, state: State, node: ast.If, index: int):
         """Handling a conditional operation
