@@ -6,7 +6,6 @@ from SymbolicVariable import *
 from Z3Solver import *
 from BinarySolver import *
 
-logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
 class Tree:
     """The Computation Tree, which walks down the Python Abstract Syntax Tree (AST)
@@ -18,23 +17,53 @@ class Tree:
 
     Attributes
     ----------
+    ast: ast.Module
+        The full AST, whose nodes are then referenced by symbolic states
     root : State
-        The root State, all future states are an r or l-node
+        The root state, all future states are an r or l-node
     state : State
-        The current State
+        The active symbolic state
+    state_queue : List[State]
+        The queue of inactive, but satisfiable symbolic states
     z3 : Z3Solver
         The handler class for Z3 SMT solving
 
     """
     def __init__(self, code: str):
-        self.root = State()
-        self.state = self.root
+        # Root symbolic state
+        self.root_state = State()
+
+        # The Abstract Symbolic Tree
+        self.root_ast = list(ast.iter_child_nodes(ast.parse(code)))
+        # If string is a function definition
+        if isinstance(self.root_ast[0], ast.FunctionDef):
+            # Initiate "empty" symbolic variables
+            for arg in self.root_ast[0].args.args:
+                self.root_state.createSymbolicVariable(arg.arg)
+            self.root_ast = self.root_ast[0].body
 
         self.z3 = Z3Solver()
-        self.walk(ast.parse(code))
+        self.cycle_state()
 
+    # Should have one recursive cycle that returns False?
+    def cycle_state(self, state = None, parent_ast = None):
+        if state is None:
+            # Default to root State
+            state = self.root_state
+        if parent_ast is None:
+            # Default to root AST
+            parent_ast = self.root_ast
+        logging.debug("Cycling through %s [ Active %r | SAT %r ]" % (state.name, state.active, state.sat))
+        # Do nothing if state is unsatisfiable
+        if state.sat == False:
+            return
 
-    def walk(self, tree: Any):
+        # Walk if state symbolic execution is incomplete
+        if state.active == True:
+            # Walk through parent AST
+            self.walk(state, parent_ast, state.parent_ast_index)
+
+    def walk(self, state, tree, index):
         """Walking down the AST at depth 1
 
         Parameters
@@ -44,29 +73,59 @@ class Tree:
 
         """
 
-        for node in ast.iter_child_nodes(tree):
+        if state.sat == False:
+            return
+
+        # If is a single node
+        if not isinstance(tree, list):
+            tree = [tree]
+            index = 0
+
+        # This happens when it needs to recurse up even FURTHER!
+        if index >= len(tree):
+            logging.error("%s has an out of bounds index of %i" % (state.name, index))
+            logging.info("This happens when using nested IF loops, which are not yet supported")
+            return
+
+        logging.debug("%s is walking down AST starting at node %s" % (state.name, type(tree[index])))
+        tree = tree[index:]
+
+        for i in range(len(tree)):
+            node = tree[i]
             t = type(node)
-            logging.info("Iterating over AST node of type %s" % t)
+
+            logging.debug("Evaluating AST node of type %s" % t)
 
             # Is a variable assignment (e.g. x = y)
             if t is ast.Assign:
                 # Can have multiple variables left of the operator (e.g. x, y, z = 2)
                 for target in node.targets:
-                    self.assign(node.value, target.id)
+                    self.assign(state, node.value, target.id)
 
             # Is an augmented variable assignment (e.g. x += y)
             elif t is ast.AugAssign:
-                self.augassign(node)
+                self.augassign(state, node)
 
-            # Is an IF statement
+            # Is an IF statement symbolic state gets forked
+            # Interrupt execution
             elif t is ast.If:
-                self.conditional(node)
+                self.conditional(state, node, i)
+
+                # Terminate the original state
+                state.active = False
+
+                # Passing current index will re-evaluate the conditional inf.
+                self.walk(state.left, tree[i+1:], 0)
+                self.walk(state.right, tree[i+1:], 0)
+
+                # Interrupt execution
+                return
 
             # Is everything else
             else:
-                logging.info("Ignored AST node")
+                logging.debug("Ignored AST node")
 
-    def assign(self, value: Any, name: str):
+    def assign(self, state: State, value: Any, name: str):
         """Handle assignment operations
 
         Parameters
@@ -81,24 +140,24 @@ class Tree:
 
         # Assigning a variable's value to another variable
         if isinstance(value, ast.Name):
-            v = self.state.getActiveVariable(value.id)
-            self.state.createSymbolicVariable(v, name)
+            v = state.getActiveVariable(value.id)
+            state.createSymbolicVariable(name, v)
         # Assigning a constant value to the variable (simplest)
         elif isinstance(value, ast.Constant):
-            self.state.createSymbolicVariable(value.value, name)
+            state.createSymbolicVariable(name, value.value)
         # Go recursive if there is a binary operation
         elif isinstance(value, ast.BinOp):
             # Translate binary operation to properties, or simplified constant
-            solver = BinarySolver(self.state)
+            solver = BinarySolver(state)
             p = solver.solve(value.left, value.op, value.right)
             if isinstance(p, ast.Constant):
-                self.state.createSymbolicVariable(p.value, name)
+                state.createSymbolicVariable(name, p.value)
             else:
-                self.state.createSymbolicVariable(p, name)
+                state.createSymbolicVariable(name, p)
         else:
             logging.error("The type %s of the assignment value for variable is unrecognized" % type(node.value))
 
-    def augassign(self, node: ast.AugAssign):
+    def augassign(self, state: State, node: ast.AugAssign):
         """Handing a augmented assignment operation
 
         Parameters
@@ -107,13 +166,15 @@ class Tree:
             The AST AugAssign node containing the variable and its state change
 
         """
-        solver = BinarySolver(self.state)
+        solver = BinarySolver(state)
         # The l-node will never be a Constant, therefore neither will the return
         p = solver.solve(node.target, node.op, node.value)
-        self.state.createSymbolicVariable(p, node.target.id)
+        state.createSymbolicVariable(p, node.target.id)
 
-    def conditional(self, node: ast.If):
+    def conditional(self, state: State, node: ast.If, index: int):
         """Handling a conditional operation
+        Every conditional will create two symbolic states; true and false
+        If these states' properties are SMT unsat; they will be marked as dead.
 
         Parameters
         ----------
@@ -124,27 +185,44 @@ class Tree:
         # Create new logical properties for relevant variables in relevant state
         test = node.test
 
-        # 1. Register new conditional property
-        true_state = copy.deepcopy(self.state)
+        # Generate Conditional Properties (e.g. x__17 >= y__0)
+        p_true = state.generateConditionalProperties(test.left, test.ops, test.comparators)
+        p_false = copy.copy(p_true)
+        p_false.is_true = False
 
-        true_state.addConditionalProperties(test.left, test.ops, test.comparators)
+        logging.debug("Forking %s with conditional %s" % (state.name, str(p_true)))
+        # Register new conditional symbolic state for TRUE
+        true_state = self.forkState(state, p_true, index+1)
+        state.right = true_state
+        self.solve(true_state)
 
-        sat = self.z3.solve(true_state.properties)
+        # Register new conditional symbolic state for FALSE
+        false_state = self.forkState(state, p_false, index+1)
+        state.left = false_state
+        self.solve(false_state)
 
-        # Does the true state solve?
-        if sat:
-            logging.info("Z3 SAT")
-            self.state.right = true_state
-            # TODO: add the inverse property for false node if there's an else
-            self.state.left = copy.deepcopy(self.state)
+        # Set true state's AST to IF Body
+        true_state.ast = node.body
+        # Walk recursively down nested IF code
+        if true_state.sat:
+            self.walk(true_state, true_state.ast, 0)
 
-            self.state = true_state
-            self.walk(node)
+        # Set false state's AST to orelse Body if exists
+        # Process Else conditional
+        if false_state.sat and hasattr(node, 'orelse'):
+            false_state.ast = node.orelse
+            # Walk recursively down nested IF code
+            self.walk(false_state, false_state.ast, 0)
 
-        # TODO: Merge back
+    def forkState(self, state: State, properties: list, index: int):
+        s = copy.deepcopy(state)
+        s.right = s.left = s.ast = None
+        s.setStateName()
+        s.parent_ast_index=index
+        s.properties.append(properties)
+        return s
 
-        # Dead
-        else:
-            logging.info("Z3 UNSAT")
-            true_state.sat = False
-            pass
+    def solve(self, state: State):
+        logging.debug("Solving %s using Z3" % (state.name))
+        state.sat = self.z3.solve(state.properties)
+        logging.debug("%s solved using Z3 with state %r" % (state.name, state.sat))

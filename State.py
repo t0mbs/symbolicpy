@@ -5,13 +5,16 @@ from Property import *
 from SymbolicVariable import *
 from typing import Any
 
-logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
+# Global incremented state_id
+state_id = 0;
 
 class State:
     """A single possible symbolic state, and its references
 
     Attributes
     ----------
+    node: ast.*
+        The reference to the symbolic state's AST node
     variables : Dict[str, List[SymbolicVariable]]
         Dictionary mapping concrete variables to all their symbolic equivalents.
     properties : List[Property]
@@ -25,13 +28,17 @@ class State:
 
     """
 
-    def __init__(self, rand_names = False):
-
+    def __init__(self, ast = None, index = 0, rand_names = False):
         self.variables = {}
         self.properties = []
         self.right = None
         self.left = None
         self.sat = True
+
+        self.active = True
+
+        self.ast = ast
+        self.parent_ast_index = index
 
         # Generate random string for canonical variable names
         if rand_names:
@@ -39,6 +46,9 @@ class State:
         else:
             self.rand = ''
         self.tmp = "%s%s" % ('tmp', self.rand)
+
+        # Set state name
+        self.setStateName()
 
     def generateCanonicalName(self, name: str) -> str:
         """Generates the canonical name of a symbolic value
@@ -58,7 +68,11 @@ class State:
             self.variables[name] = []
         return "%s_%s_%d" % (name, self.rand, len(self.variables[name]))
 
-    def createSymbolicVariable(self, value: Any, name = None) -> SymbolicVariable:
+
+    def createTemporarySymbolicVariable(self, value: Any) -> SymbolicVariable:
+        self.createSymbolicVariable(self.tmp, value)
+
+    def createSymbolicVariable(self, name: str, value: Any = None) -> SymbolicVariable:
         """Create a symbolic variable.
 
         Parameters
@@ -75,10 +89,6 @@ class State:
             The newly created symbolic variable
 
         """
-        # Default to temporary variable name
-        if name is None:
-            name = self.tmp
-
         # Check if variable already exists
         exists = name in self.variables
 
@@ -89,12 +99,16 @@ class State:
         # Append to relevant list
         self.variables[name].append(variable)
 
+        if value is None:
+            logging.debug("Instantiating new symbolic variable %s without value" % canonical_name)
+            return variable
+
         # Add property representing the variable's symbolic value
         self.properties.append(Property(variable, ast.Eq(), value))
-        logging.debug("Adding new variable %s with value %s" % (name, value))
+        logging.debug("Instantiating new symbolic variable %s with value %s" % (canonical_name, value))
         return variable
 
-    def addConditionalProperties(self, left: Any, ops: list, comparators: list):
+    def generateConditionalProperties(self, left: Any, ops: list, comparators: list) -> Property:
         """Add a list of properties derived from conditional operators
 
         Parameters
@@ -108,9 +122,10 @@ class State:
             Length and order is aligned with ops
 
         """
-        self.properties.append(self.addConditionalPropertiesRecursive(left, ops, comparators))
+        # Copy to avoid impacting original list for reruns
+        return self.generateConditionalPropertiesRecursive(left, copy.copy(ops), copy.copy(comparators))
 
-    def addConditionalPropertiesRecursive(self, left: Any, ops: list, comparators: list) -> Property:
+    def generateConditionalPropertiesRecursive(self, left: Any, ops: list, comparators: list) -> Property:
         """Recursive helper for addConditionalProperties
 
         Returns
@@ -127,7 +142,7 @@ class State:
         r = self.unpackObjectValue(comparator)
 
         if (len(comparators) > 0):
-            return Property(l, op, self.addConditionalPropertiesRecursive(comparator, ops, comparators))
+            return Property(l, op, self.generateConditionalPropertiesRecursive(comparator, ops, comparators))
         else:
             return Property(l, op, r)
 
@@ -167,3 +182,8 @@ class State:
 
         """
         return self.variables[name][-1]
+
+    def setStateName(self):
+        global state_id
+        self.name = "%s_%s_%i" % ("state", self.rand, state_id)
+        state_id += 1
