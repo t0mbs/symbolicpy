@@ -1,5 +1,6 @@
 import graphviz
 import sympy
+import textwrap
 from Tree import *
 
 class Graph:
@@ -36,9 +37,10 @@ class Graph:
             p_str.append(str(p))
 
         formula = " and ".join(p_str)
+
         # Simplify formula
         if formula == '':
             label += "No properties"
         else:
-            label += "Properties: %s" % formula
+            label += "Formula: %s" % textwrap.fill(formula, 64)
         return label
