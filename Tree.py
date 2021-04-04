@@ -43,27 +43,27 @@ class Tree:
             self.root_ast = self.root_ast[0].body
 
         self.z3 = Z3Solver()
-        self.cycle_state()
+        self.walk(self.root_state, self.root_ast)
 
-    # Should have one recursive cycle that returns False?
-    def cycle_state(self, state = None, parent_ast = None):
-        if state is None:
-            # Default to root State
-            state = self.root_state
-        if parent_ast is None:
-            # Default to root AST
-            parent_ast = self.root_ast
-        logging.debug("Cycling through %s [ Active %r | SAT %r ]" % (state.name, state.active, state.sat))
-        # Do nothing if state is unsatisfiable
-        if state.sat == False:
-            return
+    # # Should have one recursive cycle that returns False?
+    # def cycle_state(self, state = None, parent_ast = None):
+    #     if state is None:
+    #         # Default to root State
+    #         state = self.root_state
+    #     if parent_ast is None:
+    #         # Default to root AST
+    #         parent_ast = self.root_ast
+    #     logging.debug("Cycling through %s [ Active %r | SAT %r ]" % (state.name, state.active, state.sat))
+    #     # Do nothing if state is unsatisfiable
+    #     if state.sat == False:
+    #         return
+    #
+    #     # Walk if state symbolic execution is incomplete
+    #     if state.active == True:
+    #         # Walk through parent AST
+    #         self.walk(state, parent_ast, state.parent_ast_index)
 
-        # Walk if state symbolic execution is incomplete
-        if state.active == True:
-            # Walk through parent AST
-            self.walk(state, parent_ast, state.parent_ast_index)
-
-    def walk(self, state, tree, index):
+    def walk(self, state, tree):
         """Walking down the AST at depth 1
 
         Parameters
@@ -75,20 +75,6 @@ class Tree:
 
         if state.sat == False:
             return
-
-        # If is a single node
-        if not isinstance(tree, list):
-            tree = [tree]
-            index = 0
-
-        # This happens when it needs to recurse up even FURTHER!
-        if index >= len(tree):
-            logging.error("%s has an out of bounds index of %i" % (state.name, index))
-            logging.info("This happens when using nested IF loops, which are not yet supported")
-            return
-
-        logging.debug("%s is walking down AST starting at node %s" % (state.name, type(tree[index])))
-        tree = tree[index:]
 
         for i in range(len(tree)):
             node = tree[i]
@@ -115,8 +101,8 @@ class Tree:
                 state.active = False
 
                 # Passing current index will re-evaluate the conditional inf.
-                self.walk(state.left, tree[i+1:], 0)
-                self.walk(state.right, tree[i+1:], 0)
+                self.walk(state.left, tree[i+1:])
+                self.walk(state.right, tree[i+1:])
 
                 # Interrupt execution
                 return
@@ -201,24 +187,20 @@ class Tree:
         state.left = false_state
         self.solve(false_state)
 
-        # Set true state's AST to IF Body
-        true_state.ast = node.body
         # Walk recursively down nested IF code
         if true_state.sat:
-            self.walk(true_state, true_state.ast, 0)
+            self.walk(true_state, node.body)
 
         # Set false state's AST to orelse Body if exists
         # Process Else conditional
         if false_state.sat and hasattr(node, 'orelse'):
-            false_state.ast = node.orelse
-            # Walk recursively down nested IF code
-            self.walk(false_state, false_state.ast, 0)
+            # Walk recursively down nested ELSE code
+            self.walk(false_state, node.orelse)
 
     def forkState(self, state: State, properties: list, index: int):
         s = copy.deepcopy(state)
-        s.right = s.left = s.ast = None
+        s.right = s.left = None
         s.setStateName()
-        s.parent_ast_index=index
         s.properties.append(properties)
         return s
 
