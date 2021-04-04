@@ -28,7 +28,7 @@ class State:
 
     """
 
-    def __init__(self, ast = None, index = 0, rand_names = False):
+    def __init__(self, rand_names = False):
         self.variables = {}
         self.properties = []
         self.right = None
@@ -36,9 +36,6 @@ class State:
         self.sat = True
 
         self.active = True
-
-        self.ast = ast
-        self.parent_ast_index = index
 
         # Generate random string for canonical variable names
         if rand_names:
@@ -70,7 +67,7 @@ class State:
 
 
     def createTemporarySymbolicVariable(self, value: Any) -> SymbolicVariable:
-        self.createSymbolicVariable(self.tmp, value)
+        return self.createSymbolicVariable(self.tmp, value)
 
     def createSymbolicVariable(self, name: str, value: Any = None) -> SymbolicVariable:
         """Create a symbolic variable.
