@@ -1,118 +1,169 @@
 import copy
+import uuid
+import logging
 from Property import *
 from SymbolicVariable import *
+from typing import Any
 
-# Each state is a node in the tree
+logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
+
 class State:
-    def __init__(self):
+    """A single possible symbolic state, and its references
+
+    Attributes
+    ----------
+    variables : Dict[str, List[SymbolicVariable]]
+        Dictionary mapping concrete variables to all their symbolic equivalents.
+    properties : List[Property]
+        List of all state properties.
+    right : State
+        Right reference (True)
+    left : State
+        Left reference (False)
+    sat : bool
+        Whether or not the state is satisfiable
+
+    """
+
+    def __init__(self, rand_names = False):
+
         self.variables = {}
         self.properties = []
         self.right = None
         self.left = None
-        self.active = False
+        self.sat = True
 
-    def generateCanonicalName(self, name):
-        return "%s_%d" % (name, len(self.variables[name]))
+        # Generate random string for canonical variable names
+        if rand_names:
+            self.rand = str(uuid.uuid4())[:8]
+        else:
+            self.rand = ''
+        self.tmp = "%s%s" % ('tmp', self.rand)
 
-    def addSymbolicVariable(self, name, value):
-        # 1. Check if dictionary key exists
+    def generateCanonicalName(self, name: str) -> str:
+        """Generates the canonical name of a symbolic value
+
+        Parameters
+        ----------
+        name : str
+            The name of the concrete variable
+
+        Returns
+        -------
+        str
+            The canonical name of the symbolic value
+
+        """
         if name not in self.variables.keys():
             self.variables[name] = []
+        return "%s_%s_%d" % (name, self.rand, len(self.variables[name]))
 
-        # 2. Generate canonical name
+    def createSymbolicVariable(self, value: Any, name = None) -> SymbolicVariable:
+        """Create a symbolic variable.
+
+        Parameters
+        ----------
+        value : Any
+            Initial property of the symbolic variable
+            Can be a constant, symbolic variable or property containing a binary operator
+        name : str
+            Concrete name fo the variable
+
+        Returns
+        -------
+        SymbolicVariable
+            The newly created symbolic variable
+
+        """
+        # Default to temporary variable name
+        if name is None:
+            name = self.tmp
+
+        # Check if variable already exists
+        exists = name in self.variables
+
+        # Register variable
         canonical_name = self.generateCanonicalName(name)
-
-        # 3. Instantiate new symbolic variable
-        v = SymbolicVariable(canonical_name)
-
-        # 4. Register symbolic variable
-        self.registerSymbolicVariable(name, v, value)
-
-    def copySymbolicVariable(self, name, copied_variable):
-        # 1. Generate canonical name for new variable
-        canonical_name = self.generateCanonicalName(name)
-
-        # 2. Get active copied variable
-        for t in self.variables[copied_variable]:
-            if t.active == True:
-                # 3. Copy the desired variable
-                v = copy.deepcopy(t)
-
-                # 4. Update the canonical name
-                v.name = canonical_name
-
-                # 5. Register variable
-                # TODO: Fix, is broken
-                self.registerSymbolicVariable(name, v, )
-                return
-
-    def tempSymbolicVariable(self, property):
-        name = "tv"
-
-        # 1. Check if dictionary key exists
-        if name not in self.variables.keys():
-            self.variables[name] = []
-
-        canonical_name = self.generateCanonicalName(name)
-        v = SymbolicVariable(canonical_name)
-        self.registerSymbolicVariable(name, v, property)
-
-    # TODO: this does not support initial assignment
-    def forkSymbolicVariable(self, name, property):
-        print("Forking", property)
-
-        canonical_name = self.generateCanonicalName(name)
-
-        for t in self.variables[name]:
-            if t.active == True:
-                # 3. Copy the desired variable
-                v = copy.deepcopy(t)
-
-                # 4. Update the canonical name
-                v.name = canonical_name
-
-        self.registerSymbolicVariable(name, v, property)
-
-    def registerSymbolicVariable(self, name, variable, value, operator = ast.Eq):
-        # 3. Deactivate other symbolic variables, to avoid use it in future operations
-        # TODO: scope variables
-        for v in self.variables[name]:
-            v.active = False
+        variable = SymbolicVariable(canonical_name)
 
         # Append to relevant list
         self.variables[name].append(variable)
 
         # Add property representing the variable's symbolic value
-        print(variable, operator, value)
-        self.properties.append(Property(variable, operator(), value))
+        self.properties.append(Property(variable, ast.Eq(), value))
+        logging.debug("Adding new variable %s with value %s" % (name, value))
+        return variable
 
-    def addProperty(self, left, op, right):
-        self.properties.ammend(left, op, right)
+    def addConditionalProperties(self, left: Any, ops: list, comparators: list):
+        """Add a list of properties derived from conditional operators
 
+        Parameters
+        ----------
+        left : Any
+            Left element in the conditional operation, either variable or constant
+        ops : list
+            List of conditional operators
+        comparators : list
+            List of right elements in the conditional operation
+            Length and order is aligned with ops
 
-    def addProperties(self, left, ops, comparators):
-        self.properties.append(self.addPropertiesRecursive(left, ops, comparators))
+        """
+        self.properties.append(self.addConditionalPropertiesRecursive(left, ops, comparators))
 
-    def addPropertiesRecursive(self, left, ops, comparators):
+    def addConditionalPropertiesRecursive(self, left: Any, ops: list, comparators: list) -> Property:
+        """Recursive helper for addConditionalProperties
+
+        Returns
+        -------
+        Property
+            Returns the Property tree
+
+        """
+        # Pop first operator and comparator
         op = ops.pop(0)
         comparator = comparators.pop(0)
 
-        if type(left) == ast.Name:
-            l = self.getActiveVariable(left.id)
-        else:
-            l = left.value
-
-        if type(comparator) == ast.Name:
-            r = self.getActiveVariable(comparator.id)
-        else:
-            r = comparator.value
+        l = self.unpackObjectValue(left)
+        r = self.unpackObjectValue(comparator)
 
         if (len(comparators) > 0):
-            return Property(l, op, self.addPropertiesRecursive(comparator, ops, comparators))
+            return Property(l, op, self.addConditionalPropertiesRecursive(comparator, ops, comparators))
         else:
             return Property(l, op, r)
 
-    def getActiveVariable(self, name):
-        for t in self.variables[name]:
-            if t.active == True:
-                return t
+    def unpackObjectValue(self, obj: Any) -> Any:
+        """Helper for addConditionalPropertiesRecursive, gets an object's value
+
+        Parameters
+        ----------
+        obj : Any
+            An ast.Name or an ast.Constant
+
+        Returns
+        -------
+        Any
+            Returns a SymbolicVariable, or the value of the constant
+
+        """
+        if isinstance(obj, ast.Name):
+            return self.getActiveVariable(obj.id)
+        elif isinstance(obj, ast.Constant):
+            return obj.value
+        else:
+            logging.error("Expected object of type ast.Name or ast.Constant. Got object of type %s" % type(obj))
+
+    def getActiveVariable(self, name: str) -> SymbolicVariable:
+        """Gets the symbolic value that is currently active
+
+        Parameters
+        ----------
+        name : str
+            Concrete variable name
+
+        Returns
+        -------
+        SymbolicVariable
+            Last symbolic variable
+
+        """
+        return self.variables[name][-1]

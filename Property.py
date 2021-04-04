@@ -1,6 +1,8 @@
 import ast
 from SymbolicVariable import *
 
+# TODO: Comment
+# TODO: Split into Binary and Conditional subtypes
 class Property:
     # l and r Can be symbolic variable, or constant value
     def __init__(self, l, op, r):
@@ -25,7 +27,7 @@ class Property:
             ast.Mult: "*",
             ast.Div: "/",
             ast.Mod: "%",
-            ast.Pow: "^",
+            ast.Pow: "**",
             ast.LShift: "<<",
             ast.RShift: ">>"
         }
@@ -39,9 +41,7 @@ class Property:
             self.op = binary_operators[type(op)]
 
         else:
-            # ERROR
-            print(type(op))
-            print("Typeless")
+            logging.error("The operator %s is not supported", op)
 
     def getSymbolicVariables(self):
         v = []
@@ -84,3 +84,6 @@ class Property:
 
     def getUnwoundExpression(self):
         return "%s %s %s" % (self.getExprName(self.l), self.op, self.getExprName(self.r))
+
+    def __str__(self):
+        return self.getRecursiveExpression()

@@ -62,20 +62,35 @@ Z3 string solving.
 
 * Support left-constant conditional statements, (DONE)
 * Support complex conditionals (DONE)
-* Implement simple binary operators (Done)
-* Implement AugAssign (Done)
+* Implement simple binary operators (DONE)
+* Implement AugAssign (DONE)
 * Cleanup & Doc
-  * Error handling
-  * Implement logger
-  * Comment code
-  * Address TODOs
-  * Unit tests
+  * Error handling (Done)
+  * Implement logger (Done)
+  * Comment code (Done)
+  * Refactor code (Done)
+  * Address TODOs (Done)
+  * Unit tests (DONE)
+* Implement BitVectors for bit shifting
+* GitHub implementation
   * GitHub badge
   * Compatibility table
 
-* Add ELSE statements
+* Improve memory stuff
+  * Simplify equations
+  * Recycle old or unused variables
+  * Only send to Z3 those "net new" variables to evaluate
+    * e.g. z == y, don't send x
+    * This would not work if z or y has a symbolic dependency to x
 * Add step function
+* Support ast.AnnAssign and ast.Delete
+
+* Revisit the "inactive states", to revisit them rather than only pursuing a single execution path.
+  * Unless it's UNSAT, in which case it's dead.
+* Add logical comparison (&&, ||)
+* Add ELSE statements
 * Add function / user input support
+
 * Parsing the file name
 * GUI
 * Support FLAGS!!!
