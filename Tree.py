@@ -45,24 +45,6 @@ class Tree:
         self.z3 = Z3Solver()
         self.walk(self.root_state, self.root_ast)
 
-    # # Should have one recursive cycle that returns False?
-    # def cycle_state(self, state = None, parent_ast = None):
-    #     if state is None:
-    #         # Default to root State
-    #         state = self.root_state
-    #     if parent_ast is None:
-    #         # Default to root AST
-    #         parent_ast = self.root_ast
-    #     logging.debug("Cycling through %s [ Active %r | SAT %r ]" % (state.name, state.active, state.sat))
-    #     # Do nothing if state is unsatisfiable
-    #     if state.sat == False:
-    #         return
-    #
-    #     # Walk if state symbolic execution is incomplete
-    #     if state.active == True:
-    #         # Walk through parent AST
-    #         self.walk(state, parent_ast, state.parent_ast_index)
-
     def walk(self, state, tree):
         """Walking down the AST at depth 1
 
@@ -154,7 +136,7 @@ class Tree:
         """
         solver = BinarySolver(state)
         # The l-node will never be a Constant, therefore neither will the return
-        
+
         p = solver.solve(node.target, node.op, node.value)
         state.createSymbolicVariable(node.target.id, p)
 
@@ -179,12 +161,12 @@ class Tree:
 
         logging.debug("Forking %s with conditional %s" % (state.name, str(p_true)))
         # Register new conditional symbolic state for TRUE
-        true_state = self.forkState(state, p_true, index+1)
+        true_state = self.forkState(state, p_true)
         state.right = true_state
         self.solve(true_state)
 
         # Register new conditional symbolic state for FALSE
-        false_state = self.forkState(state, p_false, index+1)
+        false_state = self.forkState(state, p_false)
         state.left = false_state
         self.solve(false_state)
 
@@ -198,7 +180,7 @@ class Tree:
             # Walk recursively down nested ELSE code
             self.walk(false_state, node.orelse)
 
-    def forkState(self, state: State, properties: list, index: int):
+    def forkState(self, state: State, properties: list):
         s = copy.deepcopy(state)
         s.right = s.left = None
         s.setStateName()
