@@ -19,7 +19,6 @@ class Z3Solver:
             Whether or not the equation is SAT
 
         """
-        self.simplify(properties)
         s = z3.Solver()
         for p in properties:
 
@@ -38,9 +37,10 @@ class Z3Solver:
 
         sat = s.check().r
 
-        # TODO: implement
+        # TODO: implement with "initial" variables
         if (sat == z3.Z3_L_TRUE):
             m = s.model()
+            logging.debug("Proposed solution %s" % m)
 
         return (sat == z3.Z3_L_TRUE)
 
