@@ -57,6 +57,7 @@ Z3 string solving.
 * Dependencies
   * `python3.9 -m pip install graphviz`
   * `python3.9 -m pip install z3-solver`
+  * `python3.9 -m pip install sympy`
 
 
 
@@ -64,54 +65,53 @@ Z3 string solving.
 * Support complex conditionals (DONE)
 * Implement simple binary operators (DONE)
 * Implement AugAssign (DONE)
-* Cleanup & Doc
+* Cleanup & Doc (Done)
   * Error handling (Done)
   * Implement logger (Done)
   * Comment code (Done)
   * Refactor code (Done)
   * Address TODOs (Done)
   * Unit tests (DONE)
-* Implement BitVectors for bit shifting
+* Graph it out (Done)
+* Fix inactivity (Done)
+* Walk and think through recursion (Done)
+* Revisit the "inactive states", to revisit them rather than only pursuing a single execution path. (Done)
+  * Unless it's UNSAT, in which case it's dead. (Done)
+* Add ELSE statements (Done)
+* Add function / user input support (Done)
+
+
+* Nice to have
+  * Improve memory stuff
+    * Simplify equations
+    * Recycle old or unused variables
+    * Only send to Z3 those "net new" variables to evaluate
+      * e.g. z == y, don't send x
+      * This would not work if z or y has a symbolic dependency to x
+  * Add step function
+  * Support ast.AnnAssign and ast.Delete
+  * Implement SymPy for simplification and pretty printing of equation
+  * Replace simply GraphViz by HTML frontend
+* Parsing the file name
+* Line-injection for positions (with graph)
+* Support FLAGS!!!
 * GitHub implementation
   * GitHub badge
   * Compatibility table
 
-* Improve memory stuff
-  * Simplify equations
-  * Recycle old or unused variables
-  * Only send to Z3 those "net new" variables to evaluate
-    * e.g. z == y, don't send x
-    * This would not work if z or y has a symbolic dependency to x
-* Add step function
-* Support ast.AnnAssign and ast.Delete
-
-* Revisit the "inactive states", to revisit them rather than only pursuing a single execution path.
-  * Unless it's UNSAT, in which case it's dead.
 * Add logical comparison (&&, ||)
-* Add ELSE statements
-* Add function / user input support
 
-* Parsing the file name
-* GUI
-* Support FLAGS!!!
 
-* Note, can have binary operators in the conditionals
 
 
 Advanced
+* Implement BitVectors for bit shifting
 * Implement complex binary operators (FloorDiv, MatMult, BitOr, BitXor, BitAnd)
 * Implement complex comparison operators is, isnot, in, not in as conditional operators, (optional)
 * Implement unary operators
+* Implement complex function arguments (e.g. positional arguments)
 * Implement DSE
-* SSE / DSE Syncing on "if" statement
+* SSE / DSE Syncing on "if" statement => with line injection
 * Implement other object types (e.g. dict, list, real)
-* Merging states if not updated after if execution
-* Support functions (with inputs) rather than scripts
 * Suggest fuzzing values
-
-
-
-* Today: Get the building blocks in place
-
-Binary tree, what we can do is:
-* Every decision point, create a new linked node with the state, and the two alternative states.
+* Define entrypoint
