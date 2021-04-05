@@ -1,4 +1,5 @@
 import ast
+import logging
 from SymbolicVariable import *
 
 # TODO: Comment
@@ -20,6 +21,8 @@ class Property:
             ast.LtE: "<=",
             ast.Gt: ">",
             ast.GtE: ">=",
+            ast.Or: "or",
+            ast.And: "and"
         }
 
         binary_operators = {
@@ -50,6 +53,12 @@ class Property:
             v.append(self.r)
         if self.l_isvar:
             v.append(self.l)
+
+        if isinstance(self.r, Property):
+            v.extend(self.r.getSymbolicVariables())
+        if isinstance(self.l, Property):
+            v.extend(self.l.getSymbolicVariables())
+
         return v
 
     def getExprName(self, v):
