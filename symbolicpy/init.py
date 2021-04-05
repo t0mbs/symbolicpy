@@ -5,7 +5,7 @@ from Graph import *
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
 def main():
-    filename = "tests/basic_conditionals.py"
+    filename = "tests/test_script.py"
     with open(filename) as f:
         contents = f.read()
 

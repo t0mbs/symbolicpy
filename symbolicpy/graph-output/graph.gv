@@ -1,0 +1,75 @@
+// Computation Tree
+digraph {
+	fontname=Courier
+	state__0 [label="state__0
+
+Variables: x,y
+
+No properties" color=grey fontname=Courier margin=0.2 shape=rectangle]
+	state__2 [label="state__2
+
+Variables: x,y
+
+Formula: not x__0 > 9000 and x__1 == 2" color=grey fontname=Courier margin=0.2 shape=rectangle]
+	state__4 [label="state__4
+
+Variables: x,y,z,flag
+
+Formula: not x__0 > 9000 and x__1 == 2 and not x__1 < 0 and z__0 == x__1
+- 1 and flag__0 == 0" color=grey fontname=Courier margin=0.2 shape=rectangle]
+	state__6 [label="state__6
+
+Variables: x,y,z,a
+
+Formula: not x__0 > 9000 and x__1 == 2 and not x__1 < 0 and z__0 == x__1
+- 1 and not x__1 != 2 and a__0 == 4 % x__1" color=grey fontname=Courier margin=0.2 shape=rectangle]
+	state__4 -> state__6
+	state__5 [label="state__5
+
+Variables: x,y,z
+
+Formula: not x__0 > 9000 and x__1 == 2 and not x__1 < 0 and z__0 == x__1
+- 1 and x__1 != 2" color=firebrick1 fontname=Courier margin=0.2 shape=rectangle]
+	state__4 -> state__5
+	state__2 -> state__4
+	state__3 [label="state__3
+
+Variables: x,y
+
+Formula: not x__0 > 9000 and x__1 == 2 and x__1 < 0" color=firebrick1 fontname=Courier margin=0.2 shape=rectangle]
+	state__2 -> state__3
+	state__0 -> state__2
+	state__1 [label="state__1
+
+Variables: x,y,z
+
+Formula: x__0 > 9000 and z__0 == x__0" color=grey fontname=Courier margin=0.2 shape=rectangle]
+	state__8 [label="state__8
+
+Variables: x,y,z,flag
+
+Formula: x__0 > 9000 and z__0 == x__0 and not x__0 < 0 and z__1 == x__0 -
+1 and flag__0 == 0" color=grey fontname=Courier margin=0.2 shape=rectangle]
+	state__10 [label="state__10
+
+Variables: x,y,z
+
+Formula: x__0 > 9000 and z__0 == x__0 and not x__0 < 0 and z__1 == x__0 -
+1 and not x__0 != 2" color=firebrick1 fontname=Courier margin=0.2 shape=rectangle]
+	state__8 -> state__10
+	state__9 [label="state__9
+
+Variables: x,y,z,a
+
+Formula: x__0 > 9000 and z__0 == x__0 and not x__0 < 0 and z__1 == x__0 -
+1 and x__0 != 2 and a__0 == 3" color=grey fontname=Courier margin=0.2 shape=rectangle]
+	state__8 -> state__9
+	state__1 -> state__8
+	state__7 [label="state__7
+
+Variables: x,y,z
+
+Formula: x__0 > 9000 and z__0 == x__0 and x__0 < 0" color=firebrick1 fontname=Courier margin=0.2 shape=rectangle]
+	state__1 -> state__7
+	state__0 -> state__1
+}

@@ -1,5 +1,4 @@
 import graphviz
-import sympy
 import textwrap
 from Tree import *
 

@@ -1,0 +1,12 @@
+version: "3.5"
+
+services:
+  symbolicpy:
+    container_name: symbolicpy
+    build: .
+    volumes:
+      - ./symbolicpy:/symbolicpy
+      - ./output:/symbolicpy/graph-output
+      - ./input.py:/symbolicpy/tests/test_script.py
+    working_dir: /symbolicpy
+    command: ["python", "init.py"]
