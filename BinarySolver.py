@@ -41,6 +41,8 @@ class BinarySolver:
 
         """
 
+        l_node = r_node = None
+
         # Node values default to the symbolic variable names, if relevant
         if isinstance(l, ast.Name):
             l_node = self.state.getActiveVariable(l.id)
@@ -69,5 +71,8 @@ class BinarySolver:
             r_node = r.value
         if isinstance(l, ast.Constant):
             l_node = l.value
+
+        if l_node is None or r_node is None:
+            logging.error("Node with unmatched type; l:%s | r:%s", type(l), type(r))
 
         return Property(l_node, op, r_node)
