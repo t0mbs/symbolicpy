@@ -11,7 +11,8 @@ Install `docker` and `docker-compose` locally, and run `docker-compose build` to
 ## Compatibility
 
 SymbolicPy currently only supports operations on integer values, and simple arithmetic operators (e.g. if x > 3).
-If only parses function definitions when the entire file is a function definition.
+It only parses function definitions when the entire file is a function definition.
+Note that complex conditionals are also not currently supported (e.g. if x > y and y % 2 != 1:)
 
 ## Usage
 
